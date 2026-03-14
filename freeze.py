@@ -1,6 +1,6 @@
 // tests/freeze.js
 // GitHub Secrets 配置：
-//   DISCORD_ACCOUNT  格式: email:password
+//   DISCORD_ACCOUNT  格式: email,password
 //   GOST_PROXY       格式: socks5://host:port（可选）
 //   TG_BOT           格式: chat_id,bot_token
 
