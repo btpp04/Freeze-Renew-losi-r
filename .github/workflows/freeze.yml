@@ -1,0 +1,56 @@
+name: 🎮 FreezeHost 自动续期
+
+on:
+  schedule:
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+
+jobs:
+  renew:
+    name: 🔄 执行续期
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: 📥 拉取代码
+        uses: actions/checkout@v4
+
+      - name: 🟢 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: 📦 安装依赖
+        run: npm ci
+
+      - name: 🌐 安装 Playwright 浏览器
+        run: npx playwright install chromium --with-deps
+
+      - name: 🛡️ 启动 GOST 代理转发
+        if: ${{ secrets.GOST_PROXY != '' }}
+        env:
+          GOST_PROXY: ${{ secrets.GOST_PROXY }}
+        run: |
+          wget -q https://github.com/ginuerzh/gost/releases/latest/download/gost_linux_amd64.tar.gz
+          tar -xzf gost_linux_amd64.tar.gz
+          chmod +x gost
+          nohup ./gost -L http://:8080 -F "$GOST_PROXY" > gost.log 2>&1 &
+          sleep 3
+          echo "✅ GOST 已启动，测试连通性..."
+          curl -s -x http://127.0.0.1:8080 https://api.ipify.org
+
+      - name: 🚀 运行续期脚本
+        env:
+          DISCORD_ACCOUNT: ${{ secrets.DISCORD_ACCOUNT }}
+          TG_BOT:          ${{ secrets.TG_BOT }}
+          GOST_PROXY:      ${{ secrets.GOST_PROXY != '' && 'http://127.0.0.1:8080' || '' }}
+        run: npx playwright test tests/freeze.js
+
+      - name: 📸 上传失败截图
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-screenshots
+          path: test-results/
+          retention-days: 7
